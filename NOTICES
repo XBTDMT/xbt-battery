@@ -1,0 +1,19 @@
+Battery — third-party provenance
+================================
+
+Battery Toolkit — https://github.com/mhaeuser/Battery-Toolkit
+  License: BSD-3-Clause. Copyright (C) 2022 Marvin Häuser.
+  Used as the reference for the AppleSMC IOConnectCallStructMethod protocol — the
+  SMCKeyData_t struct layout and the kSMCHandleYPCEvent / kSMCReadKey / kSMCWriteKey /
+  kSMCGetKeyInfo selectors — adapted in helper/SMC/SMCShim.{c,h}. The SMC key names
+  (CHTE, CH0B, CH0C) and their byte values are independently-sourced, uncopyrightable
+  facts; they carry no license obligation.
+
+  BSD-3-Clause requires retention of the copyright notice and disclaimer, and no use of
+  the author's name to endorse. This NOTICES file satisfies that for the adapted shim.
+  The shim (helper/SMC/SMCShim.{c,h}) has since been deleted, and scripts/smc-dead-gate.sh proves the
+  helper carries no SMC code; this tree contains none of the adapted code. The credit stays because
+  earlier versions of this project adapted it.
+
+batt / gosmc (charlie0129) — GPL — referenced for SMC key/value SEMANTICS only (knowledge,
+  not code). No batt/gosmc source is copied into this project.

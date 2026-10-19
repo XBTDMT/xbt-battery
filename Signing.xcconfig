@@ -1,0 +1,25 @@
+// Signing.xcconfig — the one place the code-signing settings live; project.yml includes it for both
+// build configurations. The Team ID reaches the code only through the `TeamID` Info.plist key (the
+// app's Info.plist and the helper's in-binary Info.plist section); no .swift file hard-codes one.
+//
+// SET YOUR TEAM ID before you build: write it after `DEVELOPMENT_TEAM =` below, in this file. The
+// install and purge scripts read it from here, so passing it to xcodebuild alone is not enough.
+// It is the 10-character Organizational Unit
+// (OU) of your signing certificate, NOT the code in parentheses that
+// `security find-identity -v -p codesigning` prints after your name. Xcode > Settings > Accounts
+// shows it, or read the OU= field of:
+//   security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
+// A free Personal Team (any Apple ID added to Xcode) is enough to build and run the app.
+// Left empty, the build fails with Xcode's own "requires a development team" error.
+// With no Apple account at all, `xcodebuild ... CODE_SIGN_IDENTITY=-` builds and tests ad hoc, but
+// that app stops at launch ("TeamID missing from Info.plist"): the privileged helper's code-signing
+// pins are built from the Team ID and refuse to run without one.
+DEVELOPMENT_TEAM =
+
+// Manual code signing on all targets.
+CODE_SIGN_STYLE = Manual
+
+// "Apple Development" is the identity a free Personal Team provides, and it is enough for the
+// privileged helper's local SMAppService registration. Switch this to "Developer ID Application"
+// (paid Apple Developer Program) for a build you hand to someone else.
+CODE_SIGN_IDENTITY = Apple Development

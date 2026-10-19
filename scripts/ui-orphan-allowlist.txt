@@ -1,0 +1,65 @@
+# ui-orphan-gate allowlist — #29 C1
+# =============================================================================================
+# One symbol per line, `# reason` required by convention. An entry that has since GAINED a reader
+# FAILS the gate as STALE, so this file cannot rot into permanent amnesty: fixing an orphan forces
+# its line out of here.
+#
+# TWO KINDS of entry, and the distinction matters:
+#
+#   FALSE-POSITIVE — the gate's heuristic is wrong here. The symbol IS live; the sweep can't see it
+#     (reached transitively through a same-file caller that is itself read, or consumed by a
+#     framework rather than by our code, or declared in the same file as the view that reads it).
+#     These are permanent and correct.
+#
+#   REAL-ORPHAN — the gate is RIGHT. The symbol is genuinely dark. It is here to make the gate
+#     enforcing from day one against NEW orphans, not to bless these; the gate prints them as a
+#     BACKLOG count on every run, passing or failing. Each names who should own the decision.
+#     Delete the line when the symbol gets a screen — or when it gets deleted.
+#
+# Measured at introduction: 12 hits, 6 false positive (50%), 6 real. The audit predicted ~37.5% FP
+# retired by a ~6-line allowlist; the shape held, the rate is a little worse.
+
+# ---- FALSE-POSITIVE: transitively live through a same-file caller that IS externally read --------
+telemetryLabel      # FP: called by composedTelemetryLabel (same file), which NotificationEvents.swift reads
+guidanceText        # FP: OBCAdvisor assigns it to `guidance` (same file), which SettingsView.swift reads
+limitText           # FP: called by HeroStats.limitRowText, which BatteryPopoverView reads (#29 C1 re-home)
+keepAwakeMenuCaveat # FP: read by QuickActionsMenu.build (same file), which BatteryApp.swift:868 calls
+
+# ---- FALSE-POSITIVE: live, but not through a reader the sweep can model ---------------------------
+authState           # FP: NotificationSettingsView.swift declares the model AND the view that reads it
+displayLabel        # FP: an App Intents display surface — resolved by the framework, plus a same-file caller
+capturedLimit       # FP: not a UI string. Internal Top Up custody, @Published for persistence/observation
+partLabel           # FP: DeviceMerge.partLabel feeds DeviceBatteryComponent.label (same file), which DevicesPage renders as componentText. Was "LIVE" only via a doc comment in the pre-#30 popover.
+
+# ---- REAL-ORPHAN: #30 redesign support pieces, built ahead of the tabs that render them -----------
+# Each is spec-bound to a #30 stage; the stage that renders it MUST delete its line (the gate then
+# flags the line as STALE, so forgetting is impossible). Owner: the #30 build (knowledge/30-REDESIGN-SPEC.md).
+
+# ---- Real orphans from the #30 stage 10 excise — honesty lines whose only screen was the deleted Details push
+# Owner: the #30 close-out. Each needs a re-home-or-drop ruling; neither is deleted because both are
+# data-honesty signals (a figure is missing / history was lost), which is the exact class the gate guards.
+driftNote              # REAL-ORPHAN: "N battery figures are missing — <keys>". Was d6BatteryCard's caption; spec §4.5 Health has no slot for it yet.
+unencodableRowsDropped # REAL-ORPHAN: the B5 dropped-row counter (+ PopoverDetailStrings.historyRowsDropped). Was d6HistoryCard's line; spec §4.3 Day has no slot for it yet. Still counted + NSLog'd.
+#
+# NOT ENTERED, and the reason it cannot be: `maintenanceStalled` (HistoryStore, @Published) is still not
+# read by any view, and its copy `PopoverDetailStrings.maintenanceStalled` (app/Views/PopoverBanner.swift)
+# is not rendered anywhere either. The gate counts it LIVE only because that unrendered static shares its
+# NAME (a word-boundary sweep cannot tell them apart). Entering it here fails the gate as STALE (probed
+# 2026-10-15), so it is recorded as a comment instead: a known false-LIVE. Its THREE causes now each have
+# a screen (2026-10-16, spec 30 §16 row "32 · Health · history note", the owner's P3): the Health tab's note
+# reads `aggregateWriteFailed` ("couldn't be saved"), `unreadableAggregateMonths` and `unreadableRawDays`
+# ("couldn't be read") directly — `unreadableAggregateMonths` left this file then — so the stall itself
+# needs no screen of its own; the old copy ("couldn't write to disk") stays unrendered because it is
+# honest about only one of the three.
+
+# ---- REAL-ORPHAN history ---------------------------------------------------------------------------
+# All six real orphans found by this gate at introduction were given readers on 2026-09-08:
+#   lastFailure         -> d6BatteryCard names a failed lifetime read instead of deleting the rows
+#   automationPreflight -> AutomationPreflight.advisoryNote, rendered in charge-control remediation
+#   heldKinds           -> KeepAwakeController.partialHoldNote, appended to the on-state caption
+#   lastEnd             -> KeepAwakeController.lastEndNote, shown under the off-state caption
+#   hasProbed           -> "Measuring component power..." sub-line on the D6 Power card
+#   lastPong            -> the healthy-helper confirmation line in Settings
+# The gate then carried ZERO acknowledged dark features. Adding one back requires a line here AND a
+# reason, which is the point: the backlog count printed on every run should return to 0 once the
+# four #30 entries above get their screens.

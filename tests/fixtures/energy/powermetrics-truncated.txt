@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>tasks</key>
+	<array>
+		<dict>
+			<key>pid</key>
+			<integer>1200</integer>
+			<key>name</key>
+			<string>Google Chrome</string>
+			<key>energy_impact</key>
+			<real>30.0</

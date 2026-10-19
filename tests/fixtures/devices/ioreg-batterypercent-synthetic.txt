@@ -1,0 +1,8 @@
+    +-o AppleDeviceManagementHIDEventService  <class IOHIDEventDriver>
+      {
+        "Product" = "Magic Mouse"
+        "BatteryPercent" = 55
+        "BatteryStatusFlags" = 0
+        "DeviceAddress" = "aa-bb-cc-dd-ee-04"
+        "Transport" = "Bluetooth"
+      }

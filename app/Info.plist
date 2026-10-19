@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Battery</string>
+	<key>CFBundleDisplayName</key>
+	<string>Battery</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.1</string>
+	<key>CFBundleVersion</key>
+	<string>29</string>
+	<!-- #29 D-6 (5b): the About window assembles its copyright from this key (mockup: "© 2026 XBTDMT"). -->
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 XBTDMT</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<!-- Menu-bar agent: no Dock icon, no app menu (decision #15). -->
+	<key>LSUIElement</key>
+	<true/>
+	<!-- Read at runtime via Bundle.main.infoDictionary?["TeamID"] (WI-0.3). -->
+	<key>TeamID</key>
+	<string>$(DEVELOPMENT_TEAM)</string>
+</dict>
+</plist>

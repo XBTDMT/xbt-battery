@@ -1,0 +1,243 @@
+# project.yml — XcodeGen source of truth (decision #5, SPEC WI-0.2).
+# Regenerate the .xcodeproj with:  xcodegen generate
+# The generated *.xcodeproj is NOT committed (.gitignore).
+#
+# Four targets, all arm64-only, deployment target macOS 14.0, Swift 6 language mode:
+#   Battery                        application  (agent app, embeds the helper)
+#   com.example.batteryapp.energyhelper tool   (bare Mach-O privileged energy daemon; Sprint 3.7)
+#   Shared                         library.static (XPC protocol + constants)
+#   BatteryTests                   bundle.unit-test (logic-only, no host app)
+
+name: Battery
+
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+# Signing.xcconfig is the single source of truth for DEVELOPMENT_TEAM /
+# CODE_SIGN_IDENTITY / CODE_SIGN_STYLE (decision #17). Included as the base
+# configuration for both build configs.
+configFiles:
+  Debug: Signing.xcconfig
+  Release: Signing.xcconfig
+
+settings:
+  base:
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: "YES"
+    SWIFT_VERSION: "6.0"
+
+targets:
+
+  # ---- Shared: XPC protocol + constants, linked statically into app + helper ----
+  Shared:
+    type: library.static
+    platform: macOS
+    sources:
+      - shared
+
+  # ---- Privileged ENERGY helper: a bare Mach-O command-line tool (NOT an app bundle) ----
+  # Sprint 3.7: REPURPOSED Phase-2 scaffolding with the SMC capability EXCISED + gated, under a
+  # FRESH identity (so a stale registration of the retired com.example.batteryapp.helper cannot
+  # shadow this service). Embedded into Battery.app at Contents/MacOS/com.example.batteryapp.energyhelper.
+  # Sources are listed INDIVIDUALLY (not by directory) so this privileged target's membership is an
+  # explicit, auditable manifest — the SMC-DEAD gate (scripts/smc-dead-gate.sh) asserts it carries no
+  # SMC / charge-inhibit source and no bridging header.
+  com.example.batteryapp.energyhelper:
+    type: tool
+    platform: macOS
+    sources:
+      - helper/main.swift                      # no-trap launch + storm-guarded listener (ping only)
+      - helper/Control/DaemonLifecycle.swift   # crash-loop storm guard (DECOUPLED, engine-free)
+      - helper/Control/StormGuardStore.swift   # crashCount persistence + generic ConnID (KEPT)
+      - helper/XPC/EnergyHelperService.swift   # energy XPC service + listener delegate (ping)
+    settings:
+      base:
+        PRODUCT_NAME: com.example.batteryapp.energyhelper
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.batteryapp.energyhelper
+        # In-binary Info.plist (__TEXT,__info_plist). Sets the code-sign identifier
+        # (= CFBundleIdentifier) to com.example.batteryapp.energyhelper and carries
+        # TeamID = $(DEVELOPMENT_TEAM) for runtime read.
+        INFOPLIST_FILE: helper/Info.plist
+        CREATE_INFOPLIST_SECTION_IN_BINARY: "YES"
+        ENABLE_HARDENED_RUNTIME: "YES"
+        # NO SWIFT_OBJC_BRIDGING_HEADER — the C SMC shim is excised (Sprint 3.7 STAGE 1).
+    dependencies:
+      - target: Shared
+    # SMC-DEAD build gate (SPEC sec 5): runs after the helper is built; FAILS the build if the binary
+    # carries any SMC symbol/key string, links IOKit/AppleSMC, or shows a dlopen-of-SMC bypass. This is
+    # the NON-BYPASSABLE enforcement — every helper build (standalone or as the app's embed dependency)
+    # runs it. basedOnDependencyAnalysis:false so it always runs.
+    postBuildScripts:
+      - name: SMC-DEAD gate
+        basedOnDependencyAnalysis: false
+        script: '"${SRCROOT}/scripts/smc-dead-gate.sh"'
+
+  # ---- Agent app: LSUIElement menu-bar app, embeds + registers the helper ----
+  Battery:
+    type: application
+    platform: macOS
+    sources:
+      - app/App
+      - app/Monitoring   # Phase 1: model, readers, parsers, Energy-Mode reader
+      - app/Views        # Phase 1: telemetry popover
+      - app/ChargeControl # Phase 2 REBUILD (SPEC v4.0): native charge-limit engine (primary path)
+      - app/Devices      # 4.H #12: connected-device batteries (probe-based, best-effort)
+      - app/Notifications # 4.4: system notifications (UNUserNotificationCenter glue + pure decision layer + Settings)
+      - app/Energy       # 4.5 #19: per-app RELATIVE energy impact (top POWER; reuses ProcessProbe)
+      - app/Privileged   # 3.7 STAGE 3: EnergyModeController (app-side driver for the privileged set)
+      - app/KeepAwake    # #EI-1: in-process IOPMAssertion keep-awake (no root/helper/caffeinate)
+      - app/Lifetime     # #EI-2: read-only AppleSmartBattery lifetime/health (no write/SMC)
+      - app/SleepWake    # 3.7 sleep/wake STAGE 2: pure schedule model + read-back parser + authored-comparison
+      - app/WakeBehavior # 3.7 power-nap/wake-for-network STAGE 2b-i: app-side controller + read-back/set seams
+      - app/Intents      # Phase 5 #17 STAGE 1: App Intents (Set Charge Limit) + the @MainActor surface
+      - app/DesignSystem # #29 Cut D-1: design tokens (color/type/spacing) + reusable components
+      - app/History      # #30 stage 2: pure HistoryMetrics over the store's rows
+                         # (card/row/banner/segmented/footer) + BannerModel + SettingsRouter. App-side
+                         # views/design only; no visual swap this cut. (The app target lists each app/
+                         # subdir individually — there is NO blanket app/ glob — so a new dir must be
+                         # added explicitly. This is the D-1 recon's sanctioned source-path addition.)
+      # #29 D-6 (5a): AppIcon asset catalog — the R5 ring-identity, rendered from the owner-approved
+      # geometry by scripts/gen-appicon.swift (knowledge/29-phase2-mockup-appicon.html is the source of
+      # truth). XcodeGen compiles .xcassets into a resources phase; actool sets CFBundleIconName from
+      # ASSETCATALOG_COMPILER_APPICON_NAME below. Once set, About / notifications / Finder inherit it.
+      - app/Assets.xcassets
+      # launchd plist: a STATIC source file copied (unsigned) into the bundle's
+      # Contents/Library/LaunchDaemons/ (WI-0.4 — different mechanism from the
+      # helper executable embed below).
+      - path: helper/EnergyHelper.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchDaemons
+    settings:
+      base:
+        PRODUCT_NAME: Battery
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.batteryapp
+        INFOPLIST_FILE: app/Info.plist
+        ENABLE_HARDENED_RUNTIME: "YES"
+        # Security posture (2026-10-15): NEVER sign the app with `com.apple.security.get-task-allow`.
+        # Xcode injects it for Apple Development signing in Debug AND Release (measured: the Release
+        # build carried it too), and a debuggable app lets any same-user process attach and borrow its
+        # genuine audit token to drive the root helper. The helper's client pin
+        # (BatteryAppIDs.appRequirement) now REFUSES an app carrying it, so this must stay NO in every
+        # configuration or the helper will not talk to the build. Consequence: lldb cannot attach to
+        # the app (the scheme's Run launches it without the debugger). The helper target keeps the
+        # default — it runs as root, so attaching to it already needs root.
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon   # #29 D-6 (5a): the R5 ring identity
+    dependencies:
+      - target: Shared
+      # Helper executable embed: a BUILD-PRODUCT copy with Code Sign On Copy = YES
+      # (inside-out signing) into Contents/MacOS/ (WI-0.4).
+      - target: com.example.batteryapp.energyhelper
+        embed: true
+        codeSign: true
+        copy:
+          destination: wrapper
+          subpath: Contents/MacOS
+
+  # ---- Unit tests: link Shared statically, no host app (WI-0.6) ----
+  BatteryTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - tests
+      # Phase 1: compile the app-internal monitoring code into the test target so the pure
+      # parsers + the (mock-driven) model are testable HOST-APP-FREE (the code is not in Shared,
+      # and a host app is excluded by the spec). The app target keeps its own copy. (SPEC WI-1.7)
+      - app/Monitoring
+      # Sprint 3.7: compile the helper's KEPT generic scaffolding (the decoupled storm guard + its
+      # crashCount store) into the test target so DaemonLifecycleTests stays host-app-free. The SMC
+      # engine/shim are EXCISED (Sprint 3.7 STAGE 1) — no SMCInterface/SMCKeys/MockSMC here.
+      - helper/Control/DaemonLifecycle.swift
+      - helper/Control/StormGuardStore.swift
+      # Sprint 3.7 STAGE 2: the XPC service + listener delegate compile into the test target so the
+      # channel proof tests (ping round-trip + audit-token-pin rejection) drive the REAL delegate.
+      - helper/XPC/EnergyHelperService.swift
+      # Phase 2 REBUILD (SPEC v4.0 WI-N1..N6): the native charge-limit engine compiles into the
+      # test target so the mock-first suite stays host-app-free (same pattern as app/Monitoring).
+      - app/ChargeControl
+      # Phase 4 UI batch (SPEC sec 1/2): the popover-dismiss seam/coordinator (app/App) and the
+      # SF-Symbols icon helper + custom-glyph fallback (app/Views) compile into the test target so
+      # the pairing + bucket/variant pure functions are host-app-free. Individual files only — NOT
+      # the whole app/App or app/Views dirs (those carry @main / SwiftUI views).
+      - app/App/PopoverDismiss.swift
+      - app/App/PopoverNavigator.swift   # #29 D-6: the reset-to-root / show-history nav channel (host-app-free)
+      - app/App/AboutStrings.swift        # #29 D-6 (5b): About strings + version/copyright formatters (host-app-free; QuickActionsMenu references it)
+      - app/App/LoginItem.swift          # 4.E #27: seamed launch-at-login model (host-app-free)
+      - app/App/HelperRegistration.swift # 3.7 STAGE 2: registration/approval/migration decision logic (host-app-free)
+      - app/App/HelperHealthModel.swift  # 5.3: honest helper reg-state model (host-app-free, seamed over DaemonService)
+      - app/App/HelperClient.swift       # B-arc follow-on: the reachability LATCH state machine (host-app-free — Foundation/Combine/Shared only, no @main, no SwiftUI; the tests drive the latch directly and never open an XPC connection)
+      - app/App/UninstallCoordinator.swift # 5.5 Cut 2: ordered uninstall teardown (host-app-free; seams + coordinator only)
+      - app/Privileged/EnergyModeController.swift # 3.7 STAGE 3: app-side set controller (host-app-free, seamed)
+      - app/Privileged/AutoEnergyMode.swift       # auto-energy PHASE 1: pure policy + per-source runner (host-app-free)
+      - app/App/QuickActionsMenu.swift   # 4.3: pure quick-actions menu-builder + state (host-app-free)
+      - app/Devices                      # 4.H #12: ProcessProbe + DeviceBatterySource (host-app-free)
+      - app/Energy                       # 4.5 #19: EnergyImpactParser (pure) + EnergyImpactSource (host-app-free)
+      - app/KeepAwake                    # #EI-1: SleepAssertion seam + KeepAwakeController state machine (host-app-free)
+      - app/Lifetime                     # #EI-2: BatteryLifetime seam + pure percent/condition logic (host-app-free)
+      - app/SleepWake                    # 3.7 sleep/wake STAGE 2: pure schedule model + read-back parser (host-app-free)
+      - app/WakeBehavior                 # 3.7 power-nap/wake STAGE 2b-i: controller + seams (host-app-free)
+      - app/Intents                      # Phase 5 #17 STAGE 1: intent surface + intent/enum/provider (host-app-free)
+      - app/Views/MenuBarBatteryIcon.swift
+      - app/Views/BatteryStatusIcon.swift
+      - app/Views/GlyphDisplay.swift            # #13: pure prefs enums + display-decision (host-app-free)
+      - app/Views/GlyphPreferencesStore.swift   # #13: UserDefaults-backed glyph prefs (host-app-free)
+      - app/Views/GlyphRenderKey.swift   # #EI-1 honesty: the A2 glyph render-input key, lifted out of AppDelegate so "every render input is keyed" is assertable host-app-free
+      - app/Views/WattageReadout.swift   # 4.E #20: pure wattage formatter (host-app-free)
+      - app/Views/GraphVM.swift          # 4.2: pure history-graph view-model (host-app-free)
+      - app/Views/PopoverBanner.swift    # #29 D-2: pure exception→banner mapping (D5, host-app-free)
+      - app/Views/EnergyModePresentation.swift  # #29 D-4b: pure energy-mode value/label/mark mapping (host-app-free)
+      - app/Views/HUDTrigger.swift       # #29 D-5: pure HUD trigger predicate + string vocabulary (host-app-free)
+      - app/Views/StatusItemAnchor.swift # #29 D-5: pure status-item anchor + graceful fallback (host-app-free)
+      - app/Views/HeroStats.swift        # #29 hero v2: pure Time/Source/Limit stat strings (host-app-free)
+      - app/Views/Pages/DevicesPageModel.swift  # #30 stage 7: Devices page strings + row ordering (pure, host-app-free)
+      - app/Views/Pages/DayPageModel.swift  # #30 stage 3: pure Day-page chart/table helpers (host-app-free)
+      - app/Views/Pages/AutomationPageModel.swift  # #30 stage 8: Automation timeline geometry / captions / limit-now text (pure; host-app-free)
+      - app/Views/Pages/EnergyPageModel.swift  # #30 §4.4: pure Energy-page rows/captions/KV logic (host-app-free)
+      - app/Views/Pages/PowerDrawersModel.swift  # 2026-09-09 one-ranking ruling: source preference + row → Drawer mapping (pure; identity behind a seam)
+      - app/Views/Pages/HealthPageModel.swift   # #30 §4.5: pure Health page strings (host-app-free)
+      - app/Views/Rail/RailTab.swift     # #30 stage 1: rail tabs + the navigator-path → tab mapping (host-app-free)
+      - app/History                      # #30 stage 2: HistoryMetrics (pure; host-app-free)
+      - app/Views/Icons/AppIconResolver.swift  # #30: pid → icon policy (host-app-free logic; AppKit icon fetch behind a seam)
+      - app/Views/Icons/DeviceIcon.swift       # #30 R8: device class + name → SF Symbol, never blank (host-app-free)
+      # 4.4: notifications — only the PURE/seamed files compile host-app-free (decision layer, prefs
+      # store, auth/post seams + enable controller, event derivation). The UNUserNotificationCenter
+      # glue (NotificationManager), the Combine observer (NotificationCoordinator) and the SwiftUI
+      # NotificationSettingsView are app-only (like BatteryPopoverView) and are NOT listed here.
+      - app/Notifications/NotificationDecision.swift
+      - app/Notifications/NotificationPreferencesStore.swift
+      - app/Notifications/NotificationSeams.swift
+      - app/Notifications/NotificationEvents.swift
+      - app/Notifications/NotificationDispatcher.swift
+      # #29 Cut D-1: the PURE design-layer logic compiles host-app-free — the D5 banner severity model
+      # + arbitration (BannerModel) and the SettingsRouter (selection/open semantics). The SwiftUI
+      # components (DSCard/DSRow/DSBanner/DSSegmentedControl/DSFooterBar) and the token files are
+      # app-only (like BatteryPopoverView), so only these two host-app-free files are listed here.
+      - app/DesignSystem/BannerModel.swift
+      - app/DesignSystem/DSMetric.swift   # #30: CoreGraphics-only tokens (pageHeight) read by the page-model tests
+      - app/DesignSystem/SettingsRouter.swift
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: "YES"
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.batteryapp.tests
+    dependencies:
+      - target: Shared
+
+schemes:
+  Battery:
+    build:
+      targets:
+        Battery: all
+    run:
+      config: Debug
+      # The app is signed without get-task-allow (see CODE_SIGN_INJECT_BASE_ENTITLEMENTS above), so a
+      # debugger cannot attach to it; Xcode's Run launches it plainly instead of failing the attach.
+      debugEnabled: false
+    test:
+      config: Debug
+      targets:
+        - BatteryTests

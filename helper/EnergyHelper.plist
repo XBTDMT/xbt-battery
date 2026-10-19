@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Sprint 3.7 ENERGY helper launchd plist for SMAppService.daemon(plistName: "EnergyHelper.plist").
+	     FRESH identity (supersedes the retired com.example.batteryapp.helper). Modern key set only —
+	     NO SMJobBless-era keys (SMPrivilegedExecutables / SMAuthorizedClients). -->
+	<key>Label</key>
+	<string>com.example.batteryapp.energyhelper</string>
+	<key>BundleProgram</key>
+	<string>Contents/MacOS/com.example.batteryapp.energyhelper</string>
+	<key>MachServices</key>
+	<dict>
+		<key>com.example.batteryapp.energyhelper</key>
+		<true/>
+	</dict>
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>com.example.batteryapp</string>
+	</array>
+	<!-- Always-running daemon. RunAtLoad starts it at boot; KeepAlive {SuccessfulExit=false}
+	     crash-restarts it (the storm guard contains a rapid respawn loop). A clean exit is NOT
+	     relaunched. -->
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+</dict>
+</plist>

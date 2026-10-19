@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Embedded into the helper binary via CREATE_INFOPLIST_SECTION_IN_BINARY (WI-0.2/0.4). -->
+	<!-- CFBundleIdentifier sets the helper's code-sign identifier (must equal the app's pin). -->
+	<key>CFBundleIdentifier</key>
+	<string>com.example.batteryapp.energyhelper</string>
+	<key>CFBundleName</key>
+	<string>com.example.batteryapp.energyhelper</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.2</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<!-- Read at runtime via Bundle.main.infoDictionary?["TeamID"] (WI-0.3). -->
+	<key>TeamID</key>
+	<string>$(DEVELOPMENT_TEAM)</string>
+</dict>
+</plist>

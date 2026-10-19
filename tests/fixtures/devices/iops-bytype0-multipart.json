@@ -1,0 +1,42 @@
+[
+  {
+    "_comment": "SYNTHETIC: a three-part accessory in the shape IOPS reports (same Accessory Identifier, distinct Part Identifier / Power Source ID). Left and Right deliberately COLLIDE at 80% — the pre-4.I percent-matching guess had to fall back to unlabeled here; Part Identifier makes that fallback unnecessary.",
+    "Accessory Category": "Headset",
+    "Accessory Identifier": "11111111-2222-3333-4444-555555555555",
+    "Current Capacity": 84,
+    "Is Charging": false,
+    "Is Present": true,
+    "Max Capacity": 100,
+    "Name": "Alex’s AirPods Pro #3",
+    "Part Identifier": "Case",
+    "Power Source ID": 64230311,
+    "Transport Type": "Bluetooth LE",
+    "Type": "Accessory Source"
+  },
+  {
+    "Accessory Category": "Headset",
+    "Accessory Identifier": "11111111-2222-3333-4444-555555555555",
+    "Current Capacity": 80,
+    "Is Charging": true,
+    "Is Present": true,
+    "Max Capacity": 100,
+    "Name": "Alex’s AirPods Pro #3",
+    "Part Identifier": "Left",
+    "Power Source ID": 64230313,
+    "Transport Type": "Bluetooth LE",
+    "Type": "Accessory Source"
+  },
+  {
+    "Accessory Category": "Headset",
+    "Accessory Identifier": "11111111-2222-3333-4444-555555555555",
+    "Current Capacity": 80,
+    "Is Charging": false,
+    "Is Present": true,
+    "Max Capacity": 100,
+    "Name": "Alex’s AirPods Pro #3",
+    "Part Identifier": "Right",
+    "Power Source ID": 64230314,
+    "Transport Type": "Bluetooth LE",
+    "Type": "Accessory Source"
+  }
+]

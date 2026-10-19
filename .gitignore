@@ -1,0 +1,13 @@
+# XcodeGen generates the Xcode project from project.yml: run `xcodegen generate`; never commit it.
+*.xcodeproj
+
+# Build output (the documented build writes to build/sym)
+DerivedData/
+build/
+
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store

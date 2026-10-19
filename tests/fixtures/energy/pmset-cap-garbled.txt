@@ -1,0 +1,2 @@
+garbled non-pmset output @@@ %% random lowpowermode-ish words but no high-power key
+foo bar baz
