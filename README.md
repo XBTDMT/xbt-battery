@@ -10,8 +10,8 @@ the battery controller. It also shows which apps are spending the battery, how h
 powering and what that costs, and keeps the Mac awake on request (with the lid open). Anything it cannot read is shown
 as "—" or says so in words, never as a guess.
 
-Free, MIT, no account, no telemetry, no third-party dependencies. It is one person's project, built for and tested on
-one Mac — read *What it is not* before you build it.
+Free, open source (GPL-3.0), no account, no telemetry, no third-party dependencies. It is one person's project, built
+for and tested on one Mac — read *What it is not* before you build it.
 
 ## What it is not
 
@@ -213,5 +213,9 @@ a rule came from.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). An early, since-deleted version of the helper adapted the SMC call protocol from
+GNU General Public License, version 3 or (at your option) any later version — see [LICENSE](LICENSE).
+Copyright (c) 2026 XBTDMT. The first public version (2026-10-18) was released under the MIT License, and copies taken
+from it keep that license; later versions are GPL-3.0-or-later.
+
+An early, since-deleted version of the helper adapted the SMC call protocol from
 [Battery Toolkit](https://github.com/mhaeuser/Battery-Toolkit) (BSD-3-Clause); see [NOTICES](NOTICES).
